@@ -20,6 +20,29 @@ const SCREEN_WIDTH: u16 = 64;
 const SCREEN_HEIGHT: u16 = 32;
 /// Represents amount of RAM in bytes.
 const MEMORY_SIZE: u16 = 4096;
+/// Represents the size of the system font.
+const FONT_SIZE: u16 = 80;
+/// Represents the system font.
+const FONT_DATA: [u8; FONT_SIZE as usize] = [
+    0xF0, 0x90, 0x90, 0x90, 0xF0, // 0
+    0x20, 0x60, 0x20, 0x20, 0x70, // 1
+    0xF0, 0x10, 0xF0, 0x80, 0xF0, // 2
+    0xF0, 0x10, 0xF0, 0x10, 0xF0, // 3
+    0x90, 0x90, 0xF0, 0x10, 0x10, // 4
+    0xF0, 0x80, 0xF0, 0x10, 0xF0, // 5
+    0xF0, 0x80, 0xF0, 0x90, 0xF0, // 6
+    0xF0, 0x10, 0x20, 0x40, 0x40, // 7
+    0xF0, 0x90, 0xF0, 0x90, 0xF0, // 8
+    0xF0, 0x90, 0xF0, 0x10, 0xF0, // 9
+    0xF0, 0x90, 0xF0, 0x90, 0x90, // A
+    0xE0, 0x90, 0xE0, 0x90, 0xE0, // B
+    0xF0, 0x80, 0x80, 0x80, 0xF0, // C
+    0xE0, 0x90, 0x90, 0x90, 0xE0, // D
+    0xF0, 0x80, 0xF0, 0x80, 0xF0, // E
+    0xF0, 0x80, 0xF0, 0x80, 0x80, // F
+];
+/// Represents the system font start address.
+const FONT_START_ADDRESS: u16 = 0x50;
 
 /// Represents the underlying CHIP-8 system.
 pub struct Chip8 {
@@ -47,18 +70,10 @@ pub struct Chip8 {
     opcode: u16,
 }
 
-/// Available configurations for the Chip8 struct.
-pub enum Chip8Config {
-    Standard,
-    // Eti660_64x48,
-    // Eti660_64x64,
-    // SuperChip48,
-}
-
 impl Chip8 {
     /// Initializes a new Chip8 struct.
     pub fn new() -> Chip8 {
-        Chip8 {
+        let mut chip8: Chip8 = Chip8 {
             registers: [0; 16],
             memory: [0; MEMORY_SIZE as usize],
             index_register: 0,
@@ -70,7 +85,9 @@ impl Chip8 {
             keypad: [false; 16],
             graphics_buffer: [0; (SCREEN_WIDTH * SCREEN_HEIGHT) as usize],
             opcode: 0,
-        }
+        };
+        chip8.load_font();
+        chip8
     }
     
     /// Resets the state of the Chip8 struct.
@@ -86,11 +103,8 @@ impl Chip8 {
         self.keypad.fill(false);
         self.graphics_buffer.fill(0);
         self.opcode = 0;
-
-        // TODO: Add font load call.
+        self.load_font();
     }
-
-    // TODO: Add font load function.
 
     /// Attempts to load a ROM file from disk.
     pub fn load_rom(&mut self, rom_path: &String) -> Result<(), Error> {
@@ -108,10 +122,16 @@ impl Chip8 {
             *dst = *src;
         }
 
-        // DEBUG: Write memory to dump file, check max size file to ensure all bytes are copied
-        // fs::write("load_rom_memdump.bin", self.memory)?;
-        // fs::write("testbed.bin", [0xFF; 3584])?;
-
         Ok(())
     }
+
+    /// Loads the system font into RAM.
+    fn load_font(&mut self) {
+        let font_memory_region: &mut [u8] = &mut (self.memory)[FONT_START_ADDRESS as usize .. (FONT_START_ADDRESS + FONT_SIZE) as usize];
+        for (dst, src) in font_memory_region.iter_mut().zip(&FONT_DATA) {
+            *dst = *src;
+        }
+    }
+
+    
 }
