@@ -15,7 +15,7 @@ pub struct Opcode {
 impl Opcode {
     /// Gets the first nibble of the opcode instruction.
     pub fn nibble1(&self) -> u8 {
-        ((self.instruction & 0xF000) >> 12) as u8
+        (self.instruction >> 12) as u8
     }
 
     /// Gets the second nibble of the opcode instruction.
