@@ -92,8 +92,6 @@ fn main() -> Result<(), Error> {
     //     sleep(next_time - Instant::now());
     //     next_time += interval;
     // }
-
-    Ok(())
 }
 
 /// Updates the screen
@@ -107,8 +105,8 @@ fn draw_screen(chip8: &Chip8, canvas: &mut Canvas<Window>) {
     for (i, pixel) in chip8.graphics_buffer.iter().enumerate() {
         if *pixel {
             let x = (i % (SCREEN_WIDTH as usize)) as u32;
-            let y = (i / (SCREEN_HEIGHT as usize)) as u32;
-            let rect = Rect::new(x as i32, y as i32, 1, 1);
+            let y = (i / (SCREEN_WIDTH as usize)) as u32;
+            let rect = Rect::new((x * SCALE_FACTOR) as i32, (y * SCALE_FACTOR) as i32, SCALE_FACTOR, SCALE_FACTOR);
             canvas.fill_rect(rect).unwrap();
         }
     }
