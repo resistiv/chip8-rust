@@ -189,6 +189,11 @@ impl Chip8 {
             0xB => self.jump_offset(),
             0xC => self.rand(),
             0xD => self.draw_sprite(),
+            0xE => match self.op.nn() {
+                0x9E => self.skip_key_pressed(),
+                0xA1 => self.skip_key_not_pressed(),
+                _ => self.unknown(),
+            }
             0xF => match self.op.nn() {
                 0x07 => self.load_delay(),
                 0x0A => self.await_key(),
@@ -199,8 +204,6 @@ impl Chip8 {
                 0x33 => self.move_bcd(),
                 0x55 => self.move_regs(),
                 0x65 => self.load_regs(),
-                0x9E => self.skip_key_pressed(),
-                0xA1 => self.skip_key_not_pressed(),
                 _ => self.unknown(),
             },
             _ => self.unknown(),
@@ -393,6 +396,20 @@ impl Chip8 {
         }
     }
 
+    /// EX9E: Skip next if Key[VX] pressed
+    fn skip_key_pressed(&mut self) {
+        if self.keypad[self.reg_v[self.op.x()] as usize] {
+            self.pc += 2;
+        }
+    }
+
+    /// EXA1: Skip next if Key[VX] not pressed
+    fn skip_key_not_pressed(&mut self) {
+        if !self.keypad[self.reg_v[self.op.x()] as usize] {
+            self.pc += 2;
+        }
+    }
+
     /// FX07: VX = DELAY
     fn load_delay(&mut self) {
         self.reg_v[self.op.x()] = self.reg_delay;
@@ -460,19 +477,5 @@ impl Chip8 {
         }
 
         self.reg_i += self.op.x() as u16 + 1;
-    }
-
-    /// FX9E: Skip next if Key[VX] pressed
-    fn skip_key_pressed(&mut self) {
-        if self.keypad[self.reg_v[self.op.x()] as usize] {
-            self.pc += 2;
-        }
-    }
-
-    /// FXA1: Skip next if Key[VX] not pressed
-    fn skip_key_not_pressed(&mut self) {
-        if !self.keypad[self.reg_v[self.op.x()] as usize] {
-            self.pc += 2;
-        }
     }
 }
