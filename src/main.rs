@@ -20,6 +20,8 @@ use crate::chip8::*;
 use std::env;
 use std::io::Error;
 
+use sdl2::event::Event;
+use sdl2::keyboard::Keycode;
 use sdl2::pixels::Color;
 use sdl2::rect::Rect;
 use sdl2::render::Canvas;
@@ -73,7 +75,23 @@ fn main() -> Result<(), Error> {
     // Execution loop
     'execute: loop {
         for event in event_pump.poll_iter() {
-
+            match event {
+                Event::Quit { .. } |
+                Event::KeyDown { keycode: Some(Keycode::Escape), .. } => {
+                    break 'execute;
+                },
+                Event::KeyDown { keycode: Some(key), .. } => {
+                    if let Some(key_val) = process_key(key) {
+                        chip8.keypad[key_val] = true;
+                    }
+                },
+                Event::KeyUp { keycode: Some(key), .. } => {
+                    if let Some(key_val) = process_key(key) {
+                        chip8.keypad[key_val] = false;
+                    }
+                },
+                _ => (),
+            }
         }
 
         // Cycle the interpreter
@@ -86,14 +104,7 @@ fn main() -> Result<(), Error> {
         draw_screen(&chip8, &mut canvas);
     }
 
-    // Execution loop
-    // let interval = Duration::from_micros(2000);
-    // let mut next_time = Instant::now() + interval;
-    // loop {
-    //     chip8.cycle();
-    //     sleep(next_time - Instant::now());
-    //     next_time += interval;
-    // }
+    Ok(())
 }
 
 /// Updates the screen
@@ -113,4 +124,27 @@ fn draw_screen(chip8: &Chip8, canvas: &mut Canvas<Window>) {
         }
     }
     canvas.present();
+}
+
+/// Converts a keycode into a keypad index.
+fn process_key(key: Keycode) -> Option<usize> {
+    match key {
+        Keycode::Num1 =>    Some(0x1),
+        Keycode::Num2 =>    Some(0x2),
+        Keycode::Num3 =>    Some(0x3),
+        Keycode::Num4 =>    Some(0xC),
+        Keycode::Q =>       Some(0x4),
+        Keycode::W =>       Some(0x5),
+        Keycode::E =>       Some(0x6),
+        Keycode::R =>       Some(0xD),
+        Keycode::A =>       Some(0x7),
+        Keycode::S =>       Some(0x8),
+        Keycode::D =>       Some(0x9),
+        Keycode::F =>       Some(0xE),
+        Keycode::Z =>       Some(0xA),
+        Keycode::X =>       Some(0x0),
+        Keycode::C =>       Some(0xB),
+        Keycode::V =>       Some(0xF),
+        _ =>                None,
+    }
 }
