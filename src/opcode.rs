@@ -34,13 +34,13 @@ impl Opcode {
     }
 
     /// Gets the X register of the opcode instruction.
-    pub fn x(&self) -> u8 {
-        self.nibble2()
+    pub fn x(&self) -> usize {
+        self.nibble2() as usize
     }
 
     /// Gets the Y register of the opcode instruction.
-    pub fn y(&self) -> u8 {
-        self.nibble3()
+    pub fn y(&self) -> usize {
+        self.nibble3() as usize
     }
 
     /// Gets the N number of the opcode instruction.

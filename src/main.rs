@@ -12,10 +12,10 @@
 //   start with something interesting :)    //
 // ---------------------------------------- //
 
-mod system;
-mod instruction;
+mod chip8;
+mod opcode;
 
-use crate::system::*;
+use crate::chip8::*;
 
 use std::env;
 use std::io::Error;
@@ -30,6 +30,8 @@ const SCALE_FACTOR: u32 = 8;
 const WINDOW_WIDTH: u32 = SCREEN_WIDTH as u32 * SCALE_FACTOR;
 const WINDOW_HEIGHT: u32 = SCREEN_HEIGHT as u32 * SCALE_FACTOR;
 const TICKS_PER_FRAME: usize = 10;
+const COLOR_BACKGROUND: Color = Color::RGB(0x66, 0x10, 0x4B);
+const COLOR_FOREGROUND: Color = Color::RGB(0xDB, 0x22, 0xA1);
 
 /// Main entry point.
 fn main() -> Result<(), Error> {
@@ -96,12 +98,12 @@ fn main() -> Result<(), Error> {
 
 /// Updates the screen
 fn draw_screen(chip8: &Chip8, canvas: &mut Canvas<Window>) {
-    // Clear canvas (black)
-    canvas.set_draw_color(Color::RGB(0, 0, 0));
+    // Clear canvas
+    canvas.set_draw_color(COLOR_BACKGROUND);
     canvas.clear();
 
     // Draw in rects as pixels
-    canvas.set_draw_color(Color::RGB(255, 255, 255));
+    canvas.set_draw_color(COLOR_FOREGROUND);
     for (i, pixel) in chip8.graphics_buffer.iter().enumerate() {
         if *pixel {
             let x = (i % (SCREEN_WIDTH as usize)) as u32;

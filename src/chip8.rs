@@ -10,7 +10,7 @@
 // TODO: Add configurable constructor using enum with common configurations
 //       Problems with variable array size can be remedied with Vecs, I think...
 
-use crate::instruction::Opcode;
+use crate::opcode::Opcode;
 use std::fs::{self, Metadata};
 use std::io::{Error, ErrorKind};
 
@@ -162,47 +162,47 @@ impl Chip8 {
         match self.op.nibble1() {
             0x0 => match self.op.instruction {
                 0x00E0 => self.clear_screen(),
-                // 0x00EE => self.return_sub(),
+                0x00EE => self.return_sub(),
                 _ => self.unsupported(), // 0NNN: Execute machine lang sub
             },
             0x1 => self.jump(),
-            // 0x2 => self.call_sub(),
-            // 0x3 => self.skip_equal_imm(),
-            // 0x4 => self.skip_not_equal_imm(),
-            // 0x5 => self.skip_equal_reg(),
+            0x2 => self.call_sub(),
+            0x3 => self.skip_equal_imm(),
+            0x4 => self.skip_not_equal_imm(),
+            0x5 => self.skip_equal_reg(),
             0x6 => self.load_imm(),
             0x7 => self.add_imm(),
             0x8 => match self.op.nibble4() {
                 0x0 => self.load_reg(),
-                // 0x1 => self.or(),
-                // 0x2 => self.and(),
-                // 0x2 => self.xor(),
+                0x1 => self.or(),
+                0x2 => self.and(),
+                0x3 => self.xor(),
                 0x4 => self.add_reg(),
-                // 0x5 => self.sub_reg(),
-                // 0x6 => self.shift_right(),
-                // 0x7 => self.sub_reg_rev(),
-                // 0xE => self.shift_left(),
+                0x5 => self.sub_reg(),
+                0x6 => self.shift_right(),
+                0x7 => self.sub_reg_rev(),
+                0xE => self.shift_left(),
                 _ => self.unknown(),
             },
-            // 0x9 => self.skip_not_equal_reg(),
+            0x9 => self.skip_not_equal_reg(),
             0xA => self.load_addr(),
-            // 0xB => self.jump_offset(),
-            // 0xC => self.rand(),
+            0xB => self.jump_offset(),
+            0xC => self.rand(),
             0xD => self.draw_sprite(),
-            // 0xF => match self.op.nn() {
-            //     0x07 => self.load_delay(),
-            //     0x0A => self.await_key(),
-            //     0x15 => self.set_delay(),
-            //     0x18 => self.set_sound(),
-            //     0x1E => self.add_addr(),
-            //     0x29 => self.load_digit_addr(),
-            //     0x33 => self.move_bcd(),
-            //     0x55 => self.move_regs(),
-            //     0x65 => self.load_regs(),
-            //     0x9E => self.skip_key_pressed,
-            //     0xA1 => self.skip_key_not_pressed,
-            //     _ => self.unknown(),
-            // },
+            0xF => match self.op.nn() {
+                0x07 => self.load_delay(),
+                0x0A => self.await_key(),
+                0x15 => self.set_delay(),
+                0x18 => self.set_sound(),
+                0x1E => self.add_addr(),
+                0x29 => self.load_digit_addr(),
+                0x33 => self.move_bcd(),
+                0x55 => self.move_regs(),
+                0x65 => self.load_regs(),
+                0x9E => self.skip_key_pressed(),
+                0xA1 => self.skip_key_not_pressed(),
+                _ => self.unknown(),
+            },
             _ => self.unknown(),
         }
     }
@@ -228,48 +228,138 @@ impl Chip8 {
         panic!("Unsupported instruction: 0x{:04X}", self.op.instruction);
     }
 
-    /// 00E0: Clears the video buffer
+    /// 00E0: Clears the video buffer.
     fn clear_screen(&mut self) {
         self.graphics_buffer.fill(false);
     }
 
-    /// 1NNN: Jumps to NNN in memory.
+    /// 00EE: Return from subroutine
+    fn return_sub(&mut self) {
+        self.sp -= 1;
+        self.pc = self.stack[self.sp as usize];
+    }
+
+    /// 1NNN: PC = #NNN
     fn jump(&mut self) {
         self.pc = self.op.nnn();
     }
 
-    /// 6XNN: Loads an immediate NN into register VX.
+    /// 2NNN: Push PC to stack, PC = #NNN
+    fn call_sub(&mut self) {
+        self.stack[self.sp as usize] = self.pc;
+        self.sp += 1;
+        self.pc = self.op.nnn();
+    }
+
+    /// 3XNN: Skip next if VX == #NN
+    fn skip_equal_imm(&mut self) {
+        if self.reg_v[self.op.x()] == self.op.nn() {
+            self.pc += 2;
+        }
+    }
+
+    /// 4XNN: Skip next if VX != #NN
+    fn skip_not_equal_imm(&mut self) {
+        if self.reg_v[self.op.x()] != self.op.nn() {
+            self.pc += 2;
+        }
+    }
+
+    /// 5XY0: Skip next if VX == VY
+    fn skip_equal_reg(&mut self) {
+        if self.reg_v[self.op.x()] == self.reg_v[self.op.y()] {
+            self.pc += 2;
+        }
+    }
+
+    /// 6XNN: VX = #NN
     fn load_imm(&mut self) {
-        self.reg_v[self.op.x() as usize] = self.op.nn();
+        self.reg_v[self.op.x()] = self.op.nn();
     }
 
-    /// 7XNN: Adds an immediate NN to register VX.
+    /// 7XNN: VX += #NN (Doesn't set VF on overflow)
     fn add_imm(&mut self) {
-        let vx_val: u16 = self.reg_v[self.op.x() as usize] as u16;
-        let imm_val: u16 = self.op.nn() as u16;
-        let add_result: u16 = vx_val + imm_val;
-
-        self.reg_v[self.op.x() as usize] = add_result as u8;
+        self.reg_v[self.op.x()] = self.reg_v[self.op.x()].wrapping_add(self.op.nn());
     }
 
-    /// 8XY0: Loads the value in VY into VX.
+    /// 8XY0: VX = VY
     fn load_reg(&mut self) {
-        self.reg_v[self.op.x() as usize] = self.reg_v[self.op.y() as usize];
+        self.reg_v[self.op.x()] = self.reg_v[self.op.y()];
     }
 
-    /// 8XY4: Adds the value in VY to VX.
+    /// 8XY1: VX |= VY
+    fn or(&mut self) {
+        self.reg_v[self.op.x()] |= self.reg_v[self.op.y()];
+    }
+
+    /// 8XY2: VX &= VY
+    fn and(&mut self) {
+        self.reg_v[self.op.x()] &= self.reg_v[self.op.y()];
+    }
+    
+    /// 8XY3: VX ^= VY
+    fn xor(&mut self) {
+        self.reg_v[self.op.x()] ^= self.reg_v[self.op.y()];
+    }
+
+    /// 8XY4: VX += VY (Sets VF on overflow)
     fn add_reg(&mut self) {
-        let vx_val: u16 = self.reg_v[self.op.x() as usize] as u16;
-        let vy_val: u16 = self.reg_v[self.op.y() as usize] as u16;
-        let add_result: u16 = vx_val + vy_val;
+        let (result, carry) = self.reg_v[self.op.x()].overflowing_add(self.reg_v[self.op.y()]);
 
-        self.reg_v[self.op.x() as usize] = add_result as u8;
-        self.reg_v[0xF] = if add_result > u8::MAX.into() { 1 } else { 0 };
+        self.reg_v[self.op.x()] = result;
+        self.reg_v[0xF] = carry as u8;
     }
 
-    /// ANNN: Loads address NNN into register I.
+    /// 8XY5: VX -= VY (Sets VF on borrow)
+    fn sub_reg(&mut self) {
+        let (result, overflow) = self.reg_v[self.op.x()].overflowing_sub(self.reg_v[self.op.y()]);
+
+        self.reg_v[self.op.x()] = result;
+        self.reg_v[0xF] = !overflow as u8;
+    }
+
+    /// 8XY6: VX = VY >> 1 (VF is out bit)
+    fn shift_right(&mut self) {
+        let out_bit: u8 = self.reg_v[self.op.y()] & 0x1;
+        self.reg_v[self.op.x()] = self.reg_v[self.op.y()] >> 1;
+        self.reg_v[0xF] = out_bit;
+    }
+
+    /// 8XY7: VX = VY - VX (Sets VF on borrow)
+    fn sub_reg_rev(&mut self) {
+        let (result, overflow) = self.reg_v[self.op.y()].overflowing_sub(self.reg_v[self.op.x()]);
+        
+        self.reg_v[self.op.x()] = result;
+        self.reg_v[0xF] = !overflow as u8;
+    }
+
+    /// 8XYE: VX = VY << 1 (VF is out bit)
+    fn shift_left(&mut self) {
+        let out_bit: u8 = (self.reg_v[self.op.y()] >> 7) & 0x1;
+        self.reg_v[self.op.x()] = self.reg_v[self.op.y()] << 1;
+        self.reg_v[0xF] = out_bit;
+    }
+
+    /// 9XY0: Skip next if VX != VY
+    fn skip_not_equal_reg(&mut self) {
+        if self.reg_v[self.op.x()] != self.reg_v[self.op.y()] {
+            self.pc += 2;
+        }
+    }
+
+    /// ANNN: I = #NNN
     fn load_addr(&mut self) {
         self.reg_i = self.op.nnn();
+    }
+
+    /// BNNN: PC = #NNN + V0
+    fn jump_offset(&mut self) {
+        self.pc = self.op.nnn() + self.reg_v[0] as u16;
+    }
+    
+    /// CXNN: VX = rand & #NN
+    fn rand(&mut self) {
+        self.reg_v[self.op.x()] = rand::random::<u8>() & self.op.nn();
     }
 
     /// DXYN: Draws a sprite at VX, VY, size of N-bytes, sourced from the address in register I. Also sets VF if any ON pixels are set to OFF.
@@ -300,6 +390,89 @@ impl Chip8 {
                     }
                 }
             }
+        }
+    }
+
+    /// FX07: VX = DELAY
+    fn load_delay(&mut self) {
+        self.reg_v[self.op.x()] = self.reg_delay;
+    }
+
+    /// FX0A: Await key, VX = Key pressed.
+    fn await_key(&mut self) {
+        for key in 0x0 ..= 0xF {
+            if self.keypad[key] {
+                self.reg_v[self.op.x()] = key as u8;
+                return;
+            }
+        }
+        self.pc -= 2;
+    }
+
+    /// FX15: DELAY = VX
+    fn set_delay(&mut self) {
+        self.reg_delay = self.reg_v[self.op.x()];
+    }
+
+    /// FX18: SOUND = VX
+    fn set_sound(&mut self) {
+        self.reg_sound = self.reg_v[self.op.x()];
+    }
+
+    /// FX1E: I += VX
+    fn add_addr(&mut self) {
+        self.reg_i = self.reg_i.wrapping_add(self.reg_v[self.op.x()] as u16);
+    }
+
+    /// FX29: I = Font[VX]
+    fn load_digit_addr(&mut self) {
+        // Sanity
+        if self.reg_v[self.op.x()] > 0xF {
+            panic!("Attempted to fetch font digit greater than 0xF.");
+        }
+
+        self.reg_i = FONT_START_ADDRESS + (self.reg_v[self.op.x()] as u16 * 5);
+    }
+
+    /// FX33: [I..I+2] = BCD of VX
+    fn move_bcd(&mut self) {
+        let mut value: u8 = self.reg_v[self.op.x()];
+        self.memory[(self.reg_i + 2) as usize] = value % 10;
+        value /= 10;
+        self.memory[(self.reg_i + 1) as usize] = value % 10;
+        value /= 10;
+        self.memory[self.reg_i as usize] = value;
+    }
+
+    /// FX55: [I..I+X] = [V0..VX]; I += X + 1
+    fn move_regs(&mut self) {
+        for reg in 0 ..= self.op.x() {
+            self.memory[self.reg_i as usize + reg] = self.reg_v[reg];
+        }
+
+        self.reg_i += self.op.x() as u16 + 1;
+    }
+
+    /// FX65: [V0..VX] = [I..I+X]; I += X + 1
+    fn load_regs(&mut self) {
+        for reg in 0 ..= self.op.x() {
+            self.reg_v[reg] = self.memory[self.reg_i as usize + reg];
+        }
+
+        self.reg_i += self.op.x() as u16 + 1;
+    }
+
+    /// FX9E: Skip next if Key[VX] pressed
+    fn skip_key_pressed(&mut self) {
+        if self.keypad[self.reg_v[self.op.x()] as usize] {
+            self.pc += 2;
+        }
+    }
+
+    /// FXA1: Skip next if Key[VX] not pressed
+    fn skip_key_not_pressed(&mut self) {
+        if !self.keypad[self.reg_v[self.op.x()] as usize] {
+            self.pc += 2;
         }
     }
 }
