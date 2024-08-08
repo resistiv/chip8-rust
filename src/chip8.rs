@@ -382,7 +382,7 @@ impl Chip8 {
                     let px = (x + col) as usize;
                     let py = (y + row) as usize;
 
-                    if px < SCREEN_WIDTH.into()
+                    if px < SCREEN_WIDTH.into() && py < SCREEN_HEIGHT.into()
                     {
                         let index = (SCREEN_WIDTH as usize) * py + px;
                         if self.graphics_buffer[index]
