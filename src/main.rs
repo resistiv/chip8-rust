@@ -35,6 +35,8 @@ const SCALE_FACTOR: u32 = 8;
 const WINDOW_WIDTH: u32 = SCREEN_WIDTH as u32 * SCALE_FACTOR;
 /// Calculated window height from CHIP-8 screen height.
 const WINDOW_HEIGHT: u32 = SCREEN_HEIGHT as u32 * SCALE_FACTOR;
+/// Sine wave frequency for sound.
+const SINE_FREQUENCY: f32 = 440.0;
 /// The number of cycles to run per display refresh.
 const TICKS_PER_REFRESH: i32 = 700;
 /// The color of "off" pixels.
@@ -73,7 +75,7 @@ fn main() -> Result<(), Error> {
     // Initialize audio system
     let (_stream, stream_handle) = OutputStream::try_default().unwrap();
     let sink = Sink::try_new(&stream_handle).unwrap();
-    let source = SineWave::new(440.0).repeat_infinite();
+    let source = SineWave::new(SINE_FREQUENCY).repeat_infinite();
     sink.pause();
     sink.append(source);
 
