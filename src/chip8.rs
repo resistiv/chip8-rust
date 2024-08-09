@@ -43,6 +43,9 @@ const FONT_DATA: [u8; FONT_SIZE as usize] = [
 /// Represents the system font start address.
 const FONT_START_ADDRESS: u16 = 0x50;
 
+// Quirks
+const VF_RESET_MATH_QUIRK: bool = true;
+
 /// Represents the underlying CHIP-8 system.
 pub struct Chip8 {
     /// Represents general purpose registers V0-VF.
@@ -291,24 +294,27 @@ impl Chip8 {
     fn or(&mut self) {
         self.reg_v[self.instr.x()] |= self.reg_v[self.instr.y()];
 
-        // VF reset quirk
-        self.reg_v[0xF] = 0;
+        if VF_RESET_MATH_QUIRK {
+            self.reg_v[0xF] = 0;
+        }
     }
 
     /// 8XY2: VX &= VY
     fn and(&mut self) {
         self.reg_v[self.instr.x()] &= self.reg_v[self.instr.y()];
 
-        // VF reset quirk
-        self.reg_v[0xF] = 0;
+        if VF_RESET_MATH_QUIRK {
+            self.reg_v[0xF] = 0;
+        }
     }
     
     /// 8XY3: VX ^= VY
     fn xor(&mut self) {
         self.reg_v[self.instr.x()] ^= self.reg_v[self.instr.y()];
         
-        // VF reset quirk
-        self.reg_v[0xF] = 0;
+        if VF_RESET_MATH_QUIRK {
+            self.reg_v[0xF] = 0;
+        }
     }
 
     /// 8XY4: VX += VY (Sets VF on overflow)
