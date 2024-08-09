@@ -31,7 +31,7 @@ use sdl2::video::Window;
 const SCALE_FACTOR: u32 = 8;
 const WINDOW_WIDTH: u32 = SCREEN_WIDTH as u32 * SCALE_FACTOR;
 const WINDOW_HEIGHT: u32 = SCREEN_HEIGHT as u32 * SCALE_FACTOR;
-const TICKS_PER_REFRESH: i32 = 600;
+const TICKS_PER_REFRESH: i32 = 700;
 const COLOR_BACKGROUND: Color = Color::RGB(0x66, 0x10, 0x4B);
 const COLOR_FOREGROUND: Color = Color::RGB(0xDB, 0x22, 0xA1);
 
