@@ -290,16 +290,25 @@ impl Chip8 {
     /// 8XY1: VX |= VY
     fn or(&mut self) {
         self.reg_v[self.instr.x()] |= self.reg_v[self.instr.y()];
+
+        // VF reset quirk
+        self.reg_v[0xF] = 0;
     }
 
     /// 8XY2: VX &= VY
     fn and(&mut self) {
         self.reg_v[self.instr.x()] &= self.reg_v[self.instr.y()];
+
+        // VF reset quirk
+        self.reg_v[0xF] = 0;
     }
     
     /// 8XY3: VX ^= VY
     fn xor(&mut self) {
         self.reg_v[self.instr.x()] ^= self.reg_v[self.instr.y()];
+        
+        // VF reset quirk
+        self.reg_v[0xF] = 0;
     }
 
     /// 8XY4: VX += VY (Sets VF on overflow)
