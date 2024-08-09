@@ -69,6 +69,7 @@ fn main() -> Result<(), Error> {
         .accelerated()
         .build()
         .unwrap();
+    canvas.set_draw_color(COLOR_OFF);
     canvas.clear();
     canvas.present();
 
