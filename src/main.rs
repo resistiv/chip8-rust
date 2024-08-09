@@ -38,7 +38,7 @@ const WINDOW_HEIGHT: u32 = SCREEN_HEIGHT as u32 * SCALE_FACTOR;
 /// Sine wave frequency for sound.
 const SINE_FREQUENCY: f32 = 440.0;
 /// The number of cycles to run per display refresh.
-const TICKS_PER_REFRESH: i32 = 700;
+const TICKS_PER_REFRESH: i32 = 600;
 /// The color of "off" pixels.
 const COLOR_OFF: Color = Color::RGB(0x66, 0x10, 0x4B);
 /// The color of "on" pixels.
