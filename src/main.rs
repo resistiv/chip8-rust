@@ -31,7 +31,7 @@ use sdl2::video::Window;
 const SCALE_FACTOR: u32 = 8;
 const WINDOW_WIDTH: u32 = SCREEN_WIDTH as u32 * SCALE_FACTOR;
 const WINDOW_HEIGHT: u32 = SCREEN_HEIGHT as u32 * SCALE_FACTOR;
-const TICKS_PER_FRAME: usize = 10;
+const TICKS_PER_REFRESH: i32 = 600;
 const COLOR_BACKGROUND: Color = Color::RGB(0x66, 0x10, 0x4B);
 const COLOR_FOREGROUND: Color = Color::RGB(0xDB, 0x22, 0xA1);
 
@@ -68,6 +68,10 @@ fn main() -> Result<(), Error> {
         .event_pump()
         .unwrap();
 
+    // Calculate needed tick rate based on display refresh rate
+    let refresh_rate: i32 = video_subsystem.current_display_mode(0).unwrap().refresh_rate;
+    let ticks_per_frame: usize = (TICKS_PER_REFRESH / refresh_rate).try_into().unwrap();
+
     // Initialize Chip8 system
     let mut chip8: Chip8 = Chip8::new();
     chip8.load_rom(&rom_path)?;
@@ -95,7 +99,7 @@ fn main() -> Result<(), Error> {
         }
 
         // Cycle the interpreter
-        for _ in 0 .. TICKS_PER_FRAME {
+        for _ in 0 .. ticks_per_frame {
             chip8.cycle();
         }
         chip8.cycle_special_regs();
