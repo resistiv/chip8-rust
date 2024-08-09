@@ -7,10 +7,7 @@
 // Description: CHIP-8 guts.                //
 // ---------------------------------------- //
 
-// TODO: Add configurable constructor using enum with common configurations
-//       Problems with variable array size can be remedied with Vecs, I think...
-
-use crate::opcode::Opcode;
+use crate::instruction::Instruction;
 use std::fs::{self, Metadata};
 use std::io::{Error, ErrorKind};
 
@@ -68,8 +65,8 @@ pub struct Chip8 {
     pub keypad: [bool; 16],
     /// Holds the state of the graphics buffer.
     pub graphics_buffer: [bool; ((SCREEN_WIDTH as u16) * (SCREEN_HEIGHT as u16)) as usize],
-    /// Holds the current opcode being decoded.
-    op: Opcode,
+    /// Holds the current instruction being decoded.
+    instr: Instruction,
 }
 
 /// Core Chip8 function implementations.
@@ -87,7 +84,7 @@ impl Chip8 {
             reg_sound: 0,
             keypad: [false; 16],
             graphics_buffer: [false; ((SCREEN_WIDTH as u16) * (SCREEN_HEIGHT as u16)) as usize],
-            op: Opcode { instruction: 0 },
+            instr: Instruction { raw: 0 },
         };
         chip8.load_font();
         chip8
@@ -105,7 +102,7 @@ impl Chip8 {
         self.reg_sound = 0;
         self.keypad.fill(false);
         self.clear_screen();
-        self.op = Opcode { instruction: 0 };
+        self.instr = Instruction { raw: 0 };
         self.load_font();
     }
 
@@ -153,14 +150,14 @@ impl Chip8 {
 
         let opcode_raw: u16 = (self.memory[self.pc as usize] as u16) << 8
                             | (self.memory[(self.pc + 1) as usize] as u16);
-        self.op = Opcode { instruction: opcode_raw };
+        self.instr = Instruction { raw: opcode_raw };
         self.pc += 2;
     }
 
     /// Attempts to decode and execute the current instruction.
     fn execute(&mut self) {
-        match self.op.nibble1() {
-            0x0 => match self.op.instruction {
+        match self.instr.nibble1() {
+            0x0 => match self.instr.raw {
                 0x00E0 => self.clear_screen(),
                 0x00EE => self.return_sub(),
                 _ => self.unsupported(), // 0NNN: Execute machine lang sub
@@ -172,7 +169,7 @@ impl Chip8 {
             0x5 => self.skip_equal_reg(),
             0x6 => self.load_imm(),
             0x7 => self.add_imm(),
-            0x8 => match self.op.nibble4() {
+            0x8 => match self.instr.nibble4() {
                 0x0 => self.load_reg(),
                 0x1 => self.or(),
                 0x2 => self.and(),
@@ -189,12 +186,12 @@ impl Chip8 {
             0xB => self.jump_offset(),
             0xC => self.rand(),
             0xD => self.draw_sprite(),
-            0xE => match self.op.nn() {
+            0xE => match self.instr.nn() {
                 0x9E => self.skip_key_pressed(),
                 0xA1 => self.skip_key_not_pressed(),
                 _ => self.unknown(),
             }
-            0xF => match self.op.nn() {
+            0xF => match self.instr.nn() {
                 0x07 => self.load_delay(),
                 0x0A => self.await_key(),
                 0x15 => self.set_delay(),
@@ -223,12 +220,12 @@ impl Chip8 {
 impl Chip8 {
     /// Panics on an unknown instruction.
     fn unknown(&self) {
-        panic!("Unknown instruction: 0x{:04X}", self.op.instruction);
+        panic!("Unknown instruction: 0x{:04X}", self.instr.raw);
     }
 
     /// Panics on an unsupported instruction.
     fn unsupported(&self) {
-        panic!("Unsupported instruction: 0x{:04X}", self.op.instruction);
+        panic!("Unsupported instruction: 0x{:04X}", self.instr.raw);
     }
 
     /// 00E0: Clears the video buffer.
@@ -244,138 +241,138 @@ impl Chip8 {
 
     /// 1NNN: PC = #NNN
     fn jump(&mut self) {
-        self.pc = self.op.nnn();
+        self.pc = self.instr.nnn();
     }
 
     /// 2NNN: Push PC to stack, PC = #NNN
     fn call_sub(&mut self) {
         self.stack[self.sp as usize] = self.pc;
         self.sp += 1;
-        self.pc = self.op.nnn();
+        self.pc = self.instr.nnn();
     }
 
     /// 3XNN: Skip next if VX == #NN
     fn skip_equal_imm(&mut self) {
-        if self.reg_v[self.op.x()] == self.op.nn() {
+        if self.reg_v[self.instr.x()] == self.instr.nn() {
             self.pc += 2;
         }
     }
 
     /// 4XNN: Skip next if VX != #NN
     fn skip_not_equal_imm(&mut self) {
-        if self.reg_v[self.op.x()] != self.op.nn() {
+        if self.reg_v[self.instr.x()] != self.instr.nn() {
             self.pc += 2;
         }
     }
 
     /// 5XY0: Skip next if VX == VY
     fn skip_equal_reg(&mut self) {
-        if self.reg_v[self.op.x()] == self.reg_v[self.op.y()] {
+        if self.reg_v[self.instr.x()] == self.reg_v[self.instr.y()] {
             self.pc += 2;
         }
     }
 
     /// 6XNN: VX = #NN
     fn load_imm(&mut self) {
-        self.reg_v[self.op.x()] = self.op.nn();
+        self.reg_v[self.instr.x()] = self.instr.nn();
     }
 
     /// 7XNN: VX += #NN (Doesn't set VF on overflow)
     fn add_imm(&mut self) {
-        self.reg_v[self.op.x()] = self.reg_v[self.op.x()].wrapping_add(self.op.nn());
+        self.reg_v[self.instr.x()] = self.reg_v[self.instr.x()].wrapping_add(self.instr.nn());
     }
 
     /// 8XY0: VX = VY
     fn load_reg(&mut self) {
-        self.reg_v[self.op.x()] = self.reg_v[self.op.y()];
+        self.reg_v[self.instr.x()] = self.reg_v[self.instr.y()];
     }
 
     /// 8XY1: VX |= VY
     fn or(&mut self) {
-        self.reg_v[self.op.x()] |= self.reg_v[self.op.y()];
+        self.reg_v[self.instr.x()] |= self.reg_v[self.instr.y()];
     }
 
     /// 8XY2: VX &= VY
     fn and(&mut self) {
-        self.reg_v[self.op.x()] &= self.reg_v[self.op.y()];
+        self.reg_v[self.instr.x()] &= self.reg_v[self.instr.y()];
     }
     
     /// 8XY3: VX ^= VY
     fn xor(&mut self) {
-        self.reg_v[self.op.x()] ^= self.reg_v[self.op.y()];
+        self.reg_v[self.instr.x()] ^= self.reg_v[self.instr.y()];
     }
 
     /// 8XY4: VX += VY (Sets VF on overflow)
     fn add_reg(&mut self) {
-        let (result, carry) = self.reg_v[self.op.x()].overflowing_add(self.reg_v[self.op.y()]);
+        let (result, carry) = self.reg_v[self.instr.x()].overflowing_add(self.reg_v[self.instr.y()]);
 
-        self.reg_v[self.op.x()] = result;
+        self.reg_v[self.instr.x()] = result;
         self.reg_v[0xF] = carry as u8;
     }
 
     /// 8XY5: VX -= VY (Sets VF on borrow)
     fn sub_reg(&mut self) {
-        let (result, overflow) = self.reg_v[self.op.x()].overflowing_sub(self.reg_v[self.op.y()]);
+        let (result, overflow) = self.reg_v[self.instr.x()].overflowing_sub(self.reg_v[self.instr.y()]);
 
-        self.reg_v[self.op.x()] = result;
+        self.reg_v[self.instr.x()] = result;
         self.reg_v[0xF] = !overflow as u8;
     }
 
     /// 8XY6: VX = VY >> 1 (VF is out bit)
     fn shift_right(&mut self) {
-        let out_bit: u8 = self.reg_v[self.op.y()] & 0x1;
-        self.reg_v[self.op.x()] = self.reg_v[self.op.y()] >> 1;
+        let out_bit: u8 = self.reg_v[self.instr.y()] & 0x1;
+        self.reg_v[self.instr.x()] = self.reg_v[self.instr.y()] >> 1;
         self.reg_v[0xF] = out_bit;
     }
 
     /// 8XY7: VX = VY - VX (Sets VF on borrow)
     fn sub_reg_rev(&mut self) {
-        let (result, overflow) = self.reg_v[self.op.y()].overflowing_sub(self.reg_v[self.op.x()]);
+        let (result, overflow) = self.reg_v[self.instr.y()].overflowing_sub(self.reg_v[self.instr.x()]);
         
-        self.reg_v[self.op.x()] = result;
+        self.reg_v[self.instr.x()] = result;
         self.reg_v[0xF] = !overflow as u8;
     }
 
     /// 8XYE: VX = VY << 1 (VF is out bit)
     fn shift_left(&mut self) {
-        let out_bit: u8 = (self.reg_v[self.op.y()] >> 7) & 0x1;
-        self.reg_v[self.op.x()] = self.reg_v[self.op.y()] << 1;
+        let out_bit: u8 = (self.reg_v[self.instr.y()] >> 7) & 0x1;
+        self.reg_v[self.instr.x()] = self.reg_v[self.instr.y()] << 1;
         self.reg_v[0xF] = out_bit;
     }
 
     /// 9XY0: Skip next if VX != VY
     fn skip_not_equal_reg(&mut self) {
-        if self.reg_v[self.op.x()] != self.reg_v[self.op.y()] {
+        if self.reg_v[self.instr.x()] != self.reg_v[self.instr.y()] {
             self.pc += 2;
         }
     }
 
     /// ANNN: I = #NNN
     fn load_addr(&mut self) {
-        self.reg_i = self.op.nnn();
+        self.reg_i = self.instr.nnn();
     }
 
     /// BNNN: PC = #NNN + V0
     fn jump_offset(&mut self) {
-        self.pc = self.op.nnn() + self.reg_v[0] as u16;
+        self.pc = self.instr.nnn() + self.reg_v[0] as u16;
     }
     
     /// CXNN: VX = rand & #NN
     fn rand(&mut self) {
-        self.reg_v[self.op.x()] = rand::random::<u8>() & self.op.nn();
+        self.reg_v[self.instr.x()] = rand::random::<u8>() & self.instr.nn();
     }
 
     /// DXYN: Draws a sprite at VX, VY, size of N-bytes, sourced from the address in register I. Also sets VF if any ON pixels are set to OFF.
     fn draw_sprite(&mut self) {
         // Extract start coords from registers
-        let x: u8 = self.reg_v[self.op.x() as usize] & (SCREEN_WIDTH - 1) as u8;
-        let y: u8 = self.reg_v[self.op.y() as usize] & (SCREEN_HEIGHT - 1) as u8;
+        let x: u8 = self.reg_v[self.instr.x() as usize] & (SCREEN_WIDTH - 1) as u8;
+        let y: u8 = self.reg_v[self.instr.y() as usize] & (SCREEN_HEIGHT - 1) as u8;
 
         // Clear VF flag
         self.reg_v[0xF] = 0;
 
         // Populate pixels
-        for row in 0 .. self.op.n() {
+        for row in 0 .. self.instr.n() {
             let pixel_blob = self.memory[(self.reg_i + row as u16) as usize];
             for col in 0 .. 8 {
                 if (pixel_blob & (0x80 >> col)) != 0 {
@@ -398,28 +395,28 @@ impl Chip8 {
 
     /// EX9E: Skip next if Key[VX] pressed
     fn skip_key_pressed(&mut self) {
-        if self.keypad[self.reg_v[self.op.x()] as usize] {
+        if self.keypad[self.reg_v[self.instr.x()] as usize] {
             self.pc += 2;
         }
     }
 
     /// EXA1: Skip next if Key[VX] not pressed
     fn skip_key_not_pressed(&mut self) {
-        if !self.keypad[self.reg_v[self.op.x()] as usize] {
+        if !self.keypad[self.reg_v[self.instr.x()] as usize] {
             self.pc += 2;
         }
     }
 
     /// FX07: VX = DELAY
     fn load_delay(&mut self) {
-        self.reg_v[self.op.x()] = self.reg_delay;
+        self.reg_v[self.instr.x()] = self.reg_delay;
     }
 
     /// FX0A: Await key, VX = Key pressed.
     fn await_key(&mut self) {
         for key in 0x0 ..= 0xF {
             if self.keypad[key] {
-                self.reg_v[self.op.x()] = key as u8;
+                self.reg_v[self.instr.x()] = key as u8;
                 return;
             }
         }
@@ -428,32 +425,32 @@ impl Chip8 {
 
     /// FX15: DELAY = VX
     fn set_delay(&mut self) {
-        self.reg_delay = self.reg_v[self.op.x()];
+        self.reg_delay = self.reg_v[self.instr.x()];
     }
 
     /// FX18: SOUND = VX
     fn set_sound(&mut self) {
-        self.reg_sound = self.reg_v[self.op.x()];
+        self.reg_sound = self.reg_v[self.instr.x()];
     }
 
     /// FX1E: I += VX
     fn add_addr(&mut self) {
-        self.reg_i = self.reg_i.wrapping_add(self.reg_v[self.op.x()] as u16);
+        self.reg_i = self.reg_i.wrapping_add(self.reg_v[self.instr.x()] as u16);
     }
 
     /// FX29: I = Font[VX]
     fn load_digit_addr(&mut self) {
         // Sanity
-        if self.reg_v[self.op.x()] > 0xF {
+        if self.reg_v[self.instr.x()] > 0xF {
             panic!("Attempted to fetch font digit greater than 0xF.");
         }
 
-        self.reg_i = FONT_START_ADDRESS + (self.reg_v[self.op.x()] as u16 * 5);
+        self.reg_i = FONT_START_ADDRESS + (self.reg_v[self.instr.x()] as u16 * 5);
     }
 
     /// FX33: [I..I+2] = BCD of VX
     fn move_bcd(&mut self) {
-        let mut value: u8 = self.reg_v[self.op.x()];
+        let mut value: u8 = self.reg_v[self.instr.x()];
         self.memory[(self.reg_i + 2) as usize] = value % 10;
         value /= 10;
         self.memory[(self.reg_i + 1) as usize] = value % 10;
@@ -463,19 +460,19 @@ impl Chip8 {
 
     /// FX55: [I..I+X] = [V0..VX]; I += X + 1
     fn move_regs(&mut self) {
-        for reg in 0 ..= self.op.x() {
+        for reg in 0 ..= self.instr.x() {
             self.memory[self.reg_i as usize + reg] = self.reg_v[reg];
         }
 
-        self.reg_i += self.op.x() as u16 + 1;
+        self.reg_i += self.instr.x() as u16 + 1;
     }
 
     /// FX65: [V0..VX] = [I..I+X]; I += X + 1
     fn load_regs(&mut self) {
-        for reg in 0 ..= self.op.x() {
+        for reg in 0 ..= self.instr.x() {
             self.reg_v[reg] = self.memory[self.reg_i as usize + reg];
         }
 
-        self.reg_i += self.op.x() as u16 + 1;
+        self.reg_i += self.instr.x() as u16 + 1;
     }
 }

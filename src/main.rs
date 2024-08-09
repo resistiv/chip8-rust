@@ -13,7 +13,7 @@
 // ---------------------------------------- //
 
 mod chip8;
-mod opcode;
+mod instruction;
 
 use crate::chip8::*;
 
