@@ -1,6 +1,9 @@
 # chip8-rust
 chip8-rust is a basic [CHIP-8](https://en.wikipedia.org/wiki/CHIP-8) interpreter in Rust.
 
+[![Revival Studios' Trip8 demo](demo-trip8.gif)](https://www.revival-studios.com/other.php)
+[![John Earnest's Slippery Slope Cgame](demo-slip.gif)](https://github.com/JohnEarnest/chip8Archive/tree/master/src/slipperyslope)
+
 ## Background
 This project was created as an exercise in learning Rust. I had started work on a CHIP-8 interpreter in C# some months back, but lost interest. I figured that learning a new language would make things a bit more interesting, and I seem to have figured correctly!
 
