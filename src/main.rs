@@ -74,6 +74,7 @@ fn main() -> Result<(), Error> {
     let (_stream, stream_handle) = OutputStream::try_default().unwrap();
     let sink = Sink::try_new(&stream_handle).unwrap();
     let source = SineWave::new(440.0).repeat_infinite();
+    sink.pause();
     sink.append(source);
 
     // Initialize event pump
