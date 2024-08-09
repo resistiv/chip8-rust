@@ -20,6 +20,8 @@ use crate::chip8::*;
 use std::env;
 use std::io::Error;
 
+use rodio::source::SineWave;
+use rodio::{OutputStream, Sink, Source};
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 use sdl2::pixels::Color;
@@ -68,6 +70,12 @@ fn main() -> Result<(), Error> {
     canvas.clear();
     canvas.present();
 
+    // Initialize audio system
+    let (_stream, stream_handle) = OutputStream::try_default().unwrap();
+    let sink = Sink::try_new(&stream_handle).unwrap();
+    let source = SineWave::new(440.0).repeat_infinite();
+    sink.append(source);
+
     // Initialize event pump
     let mut event_pump = sdl_context
         .event_pump()
@@ -108,6 +116,14 @@ fn main() -> Result<(), Error> {
             chip8.cycle();
         }
         chip8.cycle_special_regs();
+
+        // Adjust sound output accordingly
+        if chip8.reg_sound > 1 && sink.is_paused() {
+            sink.play();
+        }
+        else if chip8.reg_sound <= 1 && !sink.is_paused() {
+            sink.pause();
+        }
 
         // Draw results
         draw_screen(&chip8, &mut canvas);

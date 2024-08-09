@@ -6,3 +6,4 @@ edition = "2021"
 [dependencies]
 sdl2 = "0.37.0"
 rand = "0.8.5"
+rodio = { version = "0.19.0", default-features = false }

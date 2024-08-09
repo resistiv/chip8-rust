@@ -63,7 +63,7 @@ pub struct Chip8 {
     /// Represents the 60Hz delay timer register.
     reg_delay: u8,
     /// Represents the 60Hz sound timer register.
-    reg_sound: u8,
+    pub reg_sound: u8,
     /// Holds the state of the 16 input keys.
     pub keypad: [bool; 16],
     /// Holds the state of the graphics buffer.
