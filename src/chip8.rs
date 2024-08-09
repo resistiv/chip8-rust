@@ -374,7 +374,7 @@ impl Chip8 {
     
     /// CXNN: VX = rand & #NN
     fn rand(&mut self) {
-        self.reg_v[self.instr.x()] = rand::random::<u8>() & self.instr.nn();
+        self.reg_v[self.instr.x()] = fastrand::u8(..) & self.instr.nn();
     }
 
     /// DXYN: Draws a sprite at VX, VY, size of N-bytes, sourced from the address in register I. Also sets VF if any ON pixels are set to OFF.
