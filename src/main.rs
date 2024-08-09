@@ -46,6 +46,9 @@ const COLOR_ON: Color = Color::RGB(0xDB, 0x22, 0xA1);
 
 /// Main entry point.
 fn main() -> Result<(), Error> {
+    // Make a good first impression
+    println!("chip8-rust - Kai NeSmith (c) 2024");
+
     // Load arguments
     let rom_path: String = env::args().nth(1).expect("No ROM file provided.");
 
@@ -61,6 +64,8 @@ fn main() -> Result<(), Error> {
         .position_centered()
         .build()
         .unwrap();
+    println!("Screen size:\t{} x {}", SCREEN_WIDTH, SCREEN_HEIGHT);
+    println!("Window size:\t{} x {} (x{})", WINDOW_WIDTH, WINDOW_HEIGHT, SCALE_FACTOR);
 
     // Initialize drawing canvas
     let mut canvas = window
@@ -79,15 +84,16 @@ fn main() -> Result<(), Error> {
     let source = SineWave::new(SINE_FREQUENCY).repeat_infinite();
     sink.pause();
     sink.append(source);
+    println!("Sound mode:\tSine @ {} Hz", SINE_FREQUENCY);
 
     // Initialize event pump
-    let mut event_pump = sdl_context
-        .event_pump()
-        .unwrap();
+    let mut event_pump = sdl_context.event_pump().unwrap();
 
     // Calculate needed tick rate based on display refresh rate
     let refresh_rate: i32 = video_subsystem.current_display_mode(0).unwrap().refresh_rate;
+    println!("Refresh rate:\t{} Hz", refresh_rate);
     let ticks_per_frame: usize = (TICKS_PER_REFRESH / refresh_rate).try_into().unwrap();
+    println!("Ticks/frame:\t{}", ticks_per_frame);
 
     // Initialize Chip8 system
     let mut chip8: Chip8 = Chip8::new();
@@ -99,6 +105,7 @@ fn main() -> Result<(), Error> {
             match event {
                 Event::Quit { .. } |
                 Event::KeyDown { keycode: Some(Keycode::Escape), .. } => {
+                    println!("Quitting.");
                     break 'execute;
                 },
                 Event::KeyDown { keycode: Some(key), .. } => {
