@@ -29,11 +29,16 @@ use sdl2::video::Window;
 
 /// Factor by which to scale the window up.
 const SCALE_FACTOR: u32 = 8;
+/// Calculated window width from CHIP-8 screen width.
 const WINDOW_WIDTH: u32 = SCREEN_WIDTH as u32 * SCALE_FACTOR;
+/// Calculated window height from CHIP-8 screen height.
 const WINDOW_HEIGHT: u32 = SCREEN_HEIGHT as u32 * SCALE_FACTOR;
+/// The number of cycles to run per display refresh.
 const TICKS_PER_REFRESH: i32 = 700;
-const COLOR_BACKGROUND: Color = Color::RGB(0x66, 0x10, 0x4B);
-const COLOR_FOREGROUND: Color = Color::RGB(0xDB, 0x22, 0xA1);
+/// The color of "off" pixels.
+const COLOR_OFF: Color = Color::RGB(0x66, 0x10, 0x4B);
+/// The color of "on" pixels.
+const COLOR_ON: Color = Color::RGB(0xDB, 0x22, 0xA1);
 
 /// Main entry point.
 fn main() -> Result<(), Error> {
@@ -114,11 +119,11 @@ fn main() -> Result<(), Error> {
 /// Updates the screen
 fn draw_screen(chip8: &Chip8, canvas: &mut Canvas<Window>) {
     // Clear canvas
-    canvas.set_draw_color(COLOR_BACKGROUND);
+    canvas.set_draw_color(COLOR_OFF);
     canvas.clear();
 
     // Draw in rects as pixels
-    canvas.set_draw_color(COLOR_FOREGROUND);
+    canvas.set_draw_color(COLOR_ON);
     for (i, pixel) in chip8.graphics_buffer.iter().enumerate() {
         if *pixel {
             let x = (i % (SCREEN_WIDTH as usize)) as u32;
